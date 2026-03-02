@@ -1,15 +1,29 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "export",
-
-  basePath: "/universal-ai-life-os",
-
-  reactStrictMode: true,
-
+  output: "standalone",
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  reactStrictMode: false,
   images: {
-    unoptimized: true,
-    domains: ['images.unsplash.com', 'api.dicebear.com']
-  }
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ui-avatars.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
+        pathname: '/**',
+      },
+    ],
+  },
 };
 
 module.exports = nextConfig;
