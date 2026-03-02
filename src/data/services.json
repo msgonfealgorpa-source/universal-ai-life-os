@@ -1,0 +1,58 @@
+{
+  "services": [
+    {
+      "id": "srv-001",
+      "name": "Website Development",
+      "nameAr": "تطوير المواقع",
+      "provider": "TechPro Agency",
+      "category": "development",
+      "categoryAr": "تطوير",
+      "rating": 4.9,
+      "reviews": 234,
+      "price": { "from": 5000, "to": 50000, "currency": "SAR" },
+      "description": "Professional website development",
+      "descriptionAr": "تطوير مواقع احترافية",
+      "features": ["Custom Design", "Responsive", "SEO"],
+      "tags": ["website", "development", "web-design"],
+      "deliveryTime": "2-8 weeks",
+      "image": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800",
+      "featured": true
+    },
+    {
+      "id": "srv-002",
+      "name": "Mobile App Development",
+      "nameAr": "تطوير تطبيقات الجوال",
+      "provider": "AppMasters",
+      "category": "development",
+      "categoryAr": "تطوير",
+      "rating": 4.8,
+      "reviews": 178,
+      "price": { "from": 15000, "to": 150000, "currency": "SAR" },
+      "description": "Native and cross-platform apps",
+      "descriptionAr": "تطبيقات أصلية وعابرة للمنصات",
+      "features": ["iOS & Android", "UI/UX Design", "Backend"],
+      "tags": ["mobile", "app", "ios", "android"],
+      "deliveryTime": "4-16 weeks",
+      "image": "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800",
+      "featured": true
+    },
+    {
+      "id": "srv-003",
+      "name": "UI/UX Design",
+      "nameAr": "تصميم واجهات المستخدم",
+      "provider": "DesignHub",
+      "category": "design",
+      "categoryAr": "تصميم",
+      "rating": 4.9,
+      "reviews": 312,
+      "price": { "from": 2000, "to": 25000, "currency": "SAR" },
+      "description": "User-centered design",
+      "descriptionAr": "تصميم يركز على المستخدم",
+      "features": ["User Research", "Prototyping", "Design System"],
+      "tags": ["design", "ui", "ux", "figma"],
+      "deliveryTime": "1-4 weeks",
+      "image": "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800",
+      "featured": true
+    }
+  ]
+}
