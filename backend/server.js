@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import db, { seedDatabase } from "./db.js"; // ✅ استيراد صحيح للقاعدة ودالة التهيئة
 import { detectIntent } from "./ai/intentEngine.js";
 import { extractEntities } from "./ai/entityEngine.js";
 import { getProductRecommendations } from "./ai/productEngine.js";
@@ -13,42 +14,43 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 app.use(cors());
 app.use(express.json());
-// تشغيل تلقائي لتهيئة البيانات التجريبية عند كل بداية تشغيل
-import { fileURLToPath } from "url";
-import path from "path";
 
-if (process.env.NODE_ENV === "production") {
-  const seedStmt = db.prepare("SELECT count(*) as count FROM knowledge_products").get();
-  if (seedStmt.count === 0) {
-    console.log("🌱 Re-seeding demo products...");
-    // أعد هنا كود insert.run() الموجود في db.js أو استورده كدالة منفصلة
-  }
-}
-// API الأساسي
+// ✅ تهيئة قاعدة البيانات تلقائيًا عند التشغيل
+seedDatabase();
+
+// 🧠 نقطة النهاية الرئيسية
 app.post("/api/analyze", (req, res) => {
-  const { query, userId = "guest" } = req.body;
-  const { intent, score } = detectIntent(query);
-  const entities = extractEntities(query);
+  try {
+    const { query, userId = "guest" } = req.body;
+    if (!query?.trim()) return res.status(400).json({ error: "النص مطلوب" });
 
-  saveInteraction(userId, query, intent);
+    const { intent, score } = detectIntent(query);
+    const entities = extractEntities(query);
 
-  let result;
-  if (intent === "شراء_منتج") {
-    result = getProductRecommendations(entities, intent);
-  } else {
-    result = generatePlan(intent);
+    saveInteraction(userId, query, intent);
+
+    const result = intent === "شراء_منتج" 
+      ? getProductRecommendations(entities, intent) 
+      : generatePlan(intent);
+
+    result.preferences = getUserPreferences(userId);
+
+    res.json({
+      intent,
+      confidence: score > 0 ? Math.min(score * 30, 95) : 50,
+      result
+    });
+  } catch (err) {
+    console.error("❌ API Error:", err);
+    res.status(500).json({ error: "خطأ داخلي في المعالجة" });
   }
-
-  // إضافة تفضيلات المستخدم
-  result.preferences = getUserPreferences(userId);
-
-  res.json({ intent, confidence: score > 0 ? Math.min(score * 30, 95) : 50, result });
 });
 
-// عرض الواجهة في الإنتاج
+// 🌐 عرض الواجهة في الإنتاج
 if (process.env.NODE_ENV === "production") {
   const distDir = path.join(__dirname, "../frontend/dist");
   app.use(express.static(distDir));
+  // fallback لـ SPA
   app.get("*", (req, res) => res.sendFile(path.join(distDir, "index.html")));
 }
 
