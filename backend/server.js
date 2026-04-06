@@ -4,8 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 
-// استيراد المحركات
-import db, { seedDatabase } from "./db.js"; 
+import db, { initDatabase } from "./db.js"; 
 import { detectIntent } from "./ai/intentEngine.js";
 import { extractEntities } from "./ai/entityEngine.js";
 import { getProductRecommendations } from "./ai/productEngine.js";
@@ -18,27 +17,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(cors());
 app.use(express.json());
 
-// تهيئة قاعدة البيانات
-try {
-  seedDatabase();
-} catch (e) {
-  console.warn("⚠️ DB Init warning:", e.message);
-}
-
-// 🧠 API Endpoint
 app.post("/api/analyze", (req, res) => {
   try {
     const { query, userId = "guest" } = req.body;
-    
-    if (!query?.trim()) {
-      return res.status(400).json({ error: "Empty query" });
-    }
+    if (!query?.trim()) return res.status(400).json({ error: "Empty query" });
 
     const { intent, score } = detectIntent(query);
     const entities = extractEntities(query);
     saveInteraction(userId, query, intent);
 
-    // ✅ تم إضافة const هنا (كان هذا هو السبب الرئيسي لانهيار السيرفر)
     const result = intent === "شراء_منتج" 
       ? getProductRecommendations(entities, intent) 
       : generatePlan(intent);
@@ -55,7 +42,6 @@ app.post("/api/analyze", (req, res) => {
   }
 });
 
-// 🌐 تقديم الواجهة الأمامية (إذا كنت تدمجها مع الباك إند)
 const distDir = path.join(__dirname, "../frontend/dist");
 
 if (process.env.NODE_ENV === "production") {
@@ -71,6 +57,16 @@ if (process.env.NODE_ENV === "production") {
   app.get("/health", (req, res) => res.send("OK"));
 }
 
-// تشغيل السيرفر
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`🚀 Server active on port ${PORT}`));
+// تشغيل السيرفر بشكل غير متزامن بعد تهيئة قاعدة البيانات
+const startServer = async () => {
+  try {
+    await initDatabase();
+    const PORT = process.env.PORT || 4000;
+    app.listen(PORT, () => console.log(`🚀 Server active on port ${PORT}`));
+  } catch (err) {
+    console.error("❌ Failed to start server:", err);
+    process.exit(1);
+  }
+};
+
+startServer();
