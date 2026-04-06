@@ -35,7 +35,7 @@ app.post("/api/analyze", (req, res) => {
     const entities = extractEntities(query);
     saveInteraction(userId, query, intent);
 
-    result = intent === "شراء_منتج" 
+    const result = intent === "شراء_منتج" 
       ? getProductRecommendations(entities, intent) 
       : generatePlan(intent);
 
