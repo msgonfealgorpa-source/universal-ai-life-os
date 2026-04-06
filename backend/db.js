@@ -3,30 +3,23 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 
-// 1. تحديد مسار قاعدة البيانات بدقة
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, "life_os.db");
 
 let db;
 
-// 2. محاولة الاتصال بقاعدة البيانات مع حماية من الفشل
+// 1. الاتصال بقاعدة البيانات مع حماية كاملة لبيئة رندر
 try {
-  // إنشاء المجلدات إذا لم تكن موجودة
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
+  // محاولة الاتصال بملف فعلي
   db = new Database(dbPath);
-  // تفعيل وضع WAL لتحسين الأداء ومنع الأخطاء على رندر
-  db.pragma("journal_mode = WAL");
-  console.log("✅ Database connection established.");
+  console.log("✅ File database connected.");
 } catch (err) {
-  console.error("❌ DB Connection error, using memory fallback:", err.message);
-  db = new Database(":memory:"); // بديل آمن إذا فشل الاتصال بالملف
+  // إذا فشل إنشاء الملف (يحدث أحياناً على رندر)، نستخدم الذاكرة المؤقتة كبديل آمن
+  console.warn("⚠️ File DB failed, using in-memory fallback:", err.message);
+  db = new Database(":memory:"); 
 }
 
-// 3. إنشاء الجداول (أكثر جزء حساس ويجب أن يكون دقيقاً)
+// 2. إنشاء الجداول
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
@@ -55,19 +48,17 @@ db.exec(`
   );
 `);
 
-// 4. دالة تعبئة البيانات (Seed Function)
+// 3. دالة تعبئة البيانات
 export function seedDatabase() {
   console.log("🌱 Checking database state...");
   const count = db.prepare("SELECT count(*) as count FROM knowledge_products").get();
 
-  // إذا كانت القاعدة فارغة، قم بالتعبئة
   if (count.count === 0) {
     console.log("⏳ Seeding demo data...");
     const insert = db.prepare(
       "INSERT OR IGNORE INTO knowledge_products VALUES (?, ?, ?, ?, ?, ?, ?)"
     );
 
-    // استخدام Transaction لضمان سرعة الأداء
     const runInsert = db.transaction((items) => {
       for (const item of items) {
         insert.run(...item);
@@ -87,5 +78,5 @@ export function seedDatabase() {
   }
 }
 
-// 5. التصدير النهائي
+// 4. التصدير
 export default db;
