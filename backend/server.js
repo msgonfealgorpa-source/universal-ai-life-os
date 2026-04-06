@@ -13,7 +13,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 app.use(cors());
 app.use(express.json());
+// تشغيل تلقائي لتهيئة البيانات التجريبية عند كل بداية تشغيل
+import { fileURLToPath } from "url";
+import path from "path";
 
+if (process.env.NODE_ENV === "production") {
+  const seedStmt = db.prepare("SELECT count(*) as count FROM knowledge_products").get();
+  if (seedStmt.count === 0) {
+    console.log("🌱 Re-seeding demo products...");
+    // أعد هنا كود insert.run() الموجود في db.js أو استورده كدالة منفصلة
+  }
+}
 // API الأساسي
 app.post("/api/analyze", (req, res) => {
   const { query, userId = "guest" } = req.body;
