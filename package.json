@@ -6,7 +6,7 @@
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "cd frontend && vite",
     "dev:backend": "cd backend && node server.js",
-    "build": "cd frontend && npm install && vite build",
+    "build": "cd frontend && npm install && npm run build", 
     "start": "NODE_ENV=production node backend/server.js"
   },
   "dependencies": {
