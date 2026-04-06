@@ -1,86 +1,91 @@
-// قاعدة بيانات في الذاكرة - صفر مكتبات خارجية - مستحيل تفشل
-const data = {
-  users: [],
-  interactions: [],
-  knowledge_products: []
-};
+import Database from "better-sqlite3";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
 
-class Statement {
-  constructor(sql) {
-    this.sql = sql;
-    this.tableName = sql.includes("knowledge_products")
-      ? "knowledge_products"
-      : sql.includes("interactions")
-      ? "interactions"
-      : "users";
+// 1. تحديد مسار قاعدة البيانات بدقة
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dbPath = path.join(__dirname, "life_os.db");
+
+let db;
+
+// 2. محاولة الاتصال بقاعدة البيانات مع حماية من الفشل
+try {
+  // إنشاء المجلدات إذا لم تكن موجودة
+  const dir = path.dirname(dbPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
 
-  run(...p) {
-    const t = data[this.tableName];
-    if (this.sql.trim().toUpperCase().startsWith("INSERT")) {
-      t.push({
-        id: p[0], name: p[1], category: p[2], price: p[3],
-        rating: p[4], specs: p[5], tags: p[6],
-        user_id: p[1], query: p[2], intent: p[3], clicked: p[4],
-        interests: p[0], preferences: p[1]
-      });
-    }
-    if (this.sql.trim().toUpperCase().startsWith("UPDATE")) {
-      const id = p[p.length - 1];
-      const row = t.find(r => r.id === id);
-      if (row) {
-        if (this.sql.includes("interests")) row.interests = p[0];
-        if (this.sql.includes("preferences")) row.preferences = p[1];
-      }
-    }
-  }
-
-  get(...p) {
-    const t = data[this.tableName];
-    if (this.sql.includes("count(*)")) return { count: t.length };
-    if (p.length > 0) return t.find(r => r.id === p[0] || r.user_id === p[0]);
-    return t[0];
-  }
-
-  all(...p) {
-    const t = data[this.tableName];
-    if (p.length === 0) return [...t];
-    if (this.sql.includes("LIKE")) {
-      const term = String(p[0]).replace(/%/g, "");
-      return t.filter(r =>
-        (r.tags && r.tags.includes(term)) ||
-        (r.name && r.name.includes(term)) ||
-        (r.category && r.category.includes(term))
-      );
-    }
-    if (this.sql.includes("category")) return t.filter(r => r.category === p[0]);
-    if (this.sql.includes("user_id")) return t.filter(r => r.user_id === p[0]);
-    return [...t];
-  }
+  db = new Database(dbPath);
+  // تفعيل وضع WAL لتحسين الأداء ومنع الأخطاء على رندر
+  db.pragma("journal_mode = WAL");
+  console.log("✅ Database connection established.");
+} catch (err) {
+  console.error("❌ DB Connection error, using memory fallback:", err.message);
+  db = new Database(":memory:"); // بديل آمن إذا فشل الاتصال بالملف
 }
 
-const db = {
-  exec() {},
-  prepare(sql) { return new Statement(sql); },
-  pragma() {}
-};
+// 3. إنشاء الجداول (أكثر جزء حساس ويجب أن يكون دقيقاً)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    interests TEXT DEFAULT '[]',
+    preferences TEXT DEFAULT '[]',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 
-export default db;
+  CREATE TABLE IF NOT EXISTS interactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    query TEXT,
+    intent TEXT,
+    clicked TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 
+  CREATE TABLE IF NOT EXISTS knowledge_products (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    category TEXT,
+    price REAL,
+    rating REAL,
+    specs TEXT,
+    tags TEXT
+  );
+`);
+
+// 4. دالة تعبئة البيانات (Seed Function)
 export function seedDatabase() {
-  console.log("🌱 Checking database...");
+  console.log("🌱 Checking database state...");
   const count = db.prepare("SELECT count(*) as count FROM knowledge_products").get();
+
+  // إذا كانت القاعدة فارغة، قم بالتعبئة
   if (count.count === 0) {
-    console.log("⏳ Seeding...");
-    const ins = db.prepare("INSERT INTO knowledge_products VALUES (?,?,?,?,?,?,?)");
-    [
-      [1, "MacBook Air M2", "لابتوب", 4500, 4.8, "16GB RAM, M2, 512GB SSD", "برمجة, خفيف"],
+    console.log("⏳ Seeding demo data...");
+    const insert = db.prepare(
+      "INSERT OR IGNORE INTO knowledge_products VALUES (?, ?, ?, ?, ?, ?, ?)"
+    );
+
+    // استخدام Transaction لضمان سرعة الأداء
+    const runInsert = db.transaction((items) => {
+      for (const item of items) {
+        insert.run(...item);
+      }
+    });
+
+    runInsert([
+      [1, "MacBook Air M2", "لابتوب", 4500, 4.8, "16GB RAM, M2 Chip, 512GB SSD", "برمجة, خفيف"],
       [2, "Dell XPS 13", "لابتوب", 3800, 4.6, "16GB RAM, i7, 512GB SSD", "برمجة, شاشة 4K"],
       [3, "Lenovo ThinkPad", "لابتوب", 3200, 4.7, "16GB RAM, i5, 512GB SSD", "برمجة, متين"],
       [4, "HP Pavilion Gaming", "لابتوب", 2800, 4.3, "8GB RAM, GTX 1650, 256GB SSD", "ألعاب"],
       [5, "Samsung Galaxy S24", "هاتف", 3100, 4.7, "Snapdragon 8 Gen 3, 12GB RAM", "تصوير, أداء"],
       [6, "iPhone 15", "هاتف", 3800, 4.6, "A16 Bionic, 8GB RAM, 128GB", "تصوير, نظام"]
-    ].forEach(item => ins.run(...item));
-    console.log("✅ Seeded.");
+    ]);
+
+    console.log("✅ Database seeded successfully.");
   }
 }
+
+// 5. التصدير النهائي
+export default db;
